@@ -1,20 +1,19 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: ReplicationController
 metadata:
-  labels:
-    app: frontend
-    run: frontend
-  name: frontend
+  name: nginx
 spec:
-  replicas: 1
+  replicas: 3
   selector:
-    matchLabels:
-      app: frontend
+    app: nginx
   template:
-   metadata:
-    labels:
-      app: frontend
-   spec:
-    containers:
-    - image: nginx
-      name: frontend
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
