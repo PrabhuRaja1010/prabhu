@@ -1,0 +1,37 @@
+---
+- hosts: patching
+  become: true
+  become_user: root
+  tasks:
+          - name: Draining the node
+            shell: "kubectl drain --timeout 5m --ignore-daemonsets --force --delete-local-data {{ inventory_hostname|lower }}"
+            register: drain_node
+          - debug: msg="Drain is successful"
+            when: drain_node.rc == 0
+          - name: Current Kernel Version
+            shell: uname -r
+            register: curr_ker
+          - name: Initiating Patching
+            yum:
+                    name=kernel
+                    state=latest
+                    exclude= kubernetes,docker
+            register: yum_update
+          - debug: msg="kernel has been updated to latest"
+            when: yum_update.rc == 0
+          - name: Check if reboot is required or not
+            shell: kernel_new=$(rpm -qa --last kernel | head -1| awk '{print $1}'| sed 's/kernel-//g'); kernel_now=$(uname -r); if [[ $kernel_new != $kernel_now ]]; then echo "reboot is required"; else echo "reboot is not required"; fi
+            ignore_errors: true
+            register: reboot_check
+          - debug: msg="{{ reboot_check.stdout }}"
+          - name: Reboot the system after patching
+            shell: "shutdown -r now"
+            async: 1
+            poll: 0
+          - name: Wait the system to come up
+            pause:
+                    minutes: 1
+          - name: New Kernel Version
+            shell: uname -r
+            register: new_ker
+          - debug: msg="New Kernel Version is {{ new_ker.stdout }} and old Kernel Version was {{ curr_ker.stdout }}"
